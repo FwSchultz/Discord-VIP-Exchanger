@@ -2,7 +2,7 @@
 
   <img src="assets/logo.png" alt="logo" width="200" height="auto" />
   <h1>VIP-Exchanger-Bot</h1>
-  https://github.com/FwSchultz/Discord-VIP-Exchanger
+  
 <!-- Badges -->
 <p>
   <a href="https://github.com/FwSchultz/Discord-VIP-Exchanger/graphs/contributors">
