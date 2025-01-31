@@ -1,0 +1,12 @@
+[Unit]
+Description=Discord-VIP-Exchanger
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/home/user/Discord-VIP-Exchanger
+ExecStart=/home/user/Discord-VIP-Exchanger/venv/bin/python3 /home/user/Discord-VIP-Exchanger/broad-stats.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
