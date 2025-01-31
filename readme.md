@@ -2,35 +2,35 @@
 
   <img src="assets/logo.png" alt="logo" width="200" height="auto" />
   <h1>VIP-Exchanger-Bot</h1>
-  
+  https://github.com/FwSchultz/Discord-VIP-Exchanger
 <!-- Badges -->
 <p>
-  <a href="https://github.com/FwSchultz/vip-exchanger-bot/graphs/contributors">
-    <img src="https://img.shields.io/github/contributors/FwSchultz/vip-exchanger-bot" alt="contributors" />
+  <a href="https://github.com/FwSchultz/Discord-VIP-Exchanger/graphs/contributors">
+    <img src="https://img.shields.io/github/contributors/FwSchultz/Discord-VIP-Exchanger" alt="contributors" />
   </a>
   <a href="">
-    <img src="https://img.shields.io/github/last-commit/FwSchultz/vip-exchanger-bot" alt="last update" />
+    <img src="https://img.shields.io/github/last-commit/FwSchultz/Discord-VIP-Exchanger" alt="last update" />
   </a>
-  <a href="https://github.com/FwSchultz/vip-exchanger-bot/network/members">
-    <img src="https://img.shields.io/github/forks/FwSchultz/vip-exchanger-bot" alt="forks" />
+  <a href="https://github.com/FwSchultz/Discord-VIP-Exchanger/network/members">
+    <img src="https://img.shields.io/github/forks/FwSchultz/vDiscord-VIP-Exchanger" alt="forks" />
   </a>
-  <a href="https://github.com/FwSchultz/vip-exchanger-bot/stargazers">
-    <img src="https://img.shields.io/github/stars/FwSchultz/vip-exchanger-bot" alt="stars" />
+  <a href="https://github.com/FwSchultz/Discord-VIP-Exchanger/stargazers">
+    <img src="https://img.shields.io/github/stars/FwSchultz/Discord-VIP-Exchanger" alt="stars" />
   </a>
-  <a href="https://github.com/FwSchultz/vip-exchanger-bot/issues/">
-    <img src="https://img.shields.io/github/issues/FwSchultz/vip-exchanger-bot" alt="open issues" />
+  <a href="https://github.com/FwSchultz/Discord-VIP-Exchanger/issues/">
+    <img src="https://img.shields.io/github/issues/FwSchultz/Discord-VIP-Exchanger" alt="open issues" />
   </a>
-  <a href="https://github.com/FwSchultz/vip-exchanger-bot/blob/master/LICENSE">
-    <img src="https://img.shields.io/github/license/FwSchultz/vip-exchanger-bot.svg" alt="license" />
+  <a href="https://github.com/FwSchultz/Discord-VIP-Exchanger/blob/master/LICENSE">
+    <img src="https://img.shields.io/github/license/FwSchultz/Discord-VIP-Exchanger.svg" alt="license" />
   </a>
 </p>
    
 <h4>
-    <a href="https://github.com/FwSchultz/vip-exchanger-bot">Documentation</a>
+    <a href="https://github.com/FwSchultz/Discord-VIP-Exchanger">Documentation</a>
   <span> · </span>
-    <a href="https://github.com/FwSchultz/vip-exchanger-bot/issues/">Report Bug</a>
+    <a href="https://github.com/FwSchultz/Discord-VIP-Exchanger/issues/">Report Bug</a>
   <span> · </span>
-    <a href="https://github.com/FwSchultz/vip-exchanger-bot/issues/">Request Feature</a>
+    <a href="https://github.com/FwSchultz/Discord-VIP-Exchanger/issues/">Request Feature</a>
   </h4>
 </div>
 
@@ -140,8 +140,8 @@ INSTALLATION: Copy the install link and run it in your browser.
 ### 2. Clone the Repository
 ```bash
 # Clone the project repository
-git clone https://github.com/FwSchultz/Discord-Autosettings-Switcher-4-HLL-CRcon
-cd Discord-Autosettings-Switcher-4-HLL-CRcon
+git clone https://github.com/FwSchultz/Discord-VIP-Exchanger
+cd Discord-VIP-Exchanger
 ```
 
 ### 3. Set up virtual environment (venv)
