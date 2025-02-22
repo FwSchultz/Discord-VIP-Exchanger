@@ -190,9 +190,42 @@ VIP_LOG_CHANNEL=1329971694609240116 #Channel for notifications of VIP changes
 cp .env.dev .env
 ```
 
-### 5. Start Bot
-```bash
+### 4. Start Bot or use the Discord-VIP-Exchanger.service
+```start
 <bot-directory> venv/bin/python bot.py
+```
+### 4.1 or use the *.service file
+
+Managing Services with systemctl
+- edit the file with your settings
+```service
+[Unit]
+Description=Discord-VIP-Exchanger
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/home/user/Discord-VIP-Exchanger
+ExecStart=/home/user/Discord-VIP-Exchanger/venv/bin/python3 /home/user/Discord-VIP-Exchanger/bot.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+#### 4.1.1 Enable and Start a Service
+```Enable and Start a Service
+sudo systemctl enable <service-name>  # Enable the service at boot
+sudo systemctl start <service-name>   # Start the service immediately
+```
+#### 4.1.2 Stop and Disable a Service
+```Stop and Disable a Service
+sudo systemctl stop <service-name>    # Stop the service
+sudo systemctl disable <service-name> # Prevent the service from starting at boot
+```
+#### 4.1.3 Check Service Status
+```Check Service Status
+sudo systemctl status <service-name>
 ```
 
 ---
