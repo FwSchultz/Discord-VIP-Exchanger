@@ -204,7 +204,7 @@ async def auto_sync_vips():
         await asyncio.sleep(AUTO_SYNC_INTERVAL * 3600)
 
 async def sync_vips_task():
-    """Führt `sync_vips` aus und gibt zurück, ob Änderungen erkannt wurden."""
+    """Vergleicht die VIP-Listen und speichert Änderungen in der `sync`-Tabelle."""
     try:
         success = await _update_vips(None)  # Datenbank aktualisieren
         if not success:
@@ -213,42 +213,66 @@ async def sync_vips_task():
         main_vips = {row[0]: row for row in db.fetch_all("vips")}
         target_vips = {row[0]: row for row in db.fetch_all("receiver_vips")}
 
-        to_add = [main_vips[player_id] for player_id in main_vips if player_id not in target_vips]
-        to_remove = [target_vips[player_id] for player_id in target_vips if player_id not in main_vips]
+        to_add = []
+        to_remove = []
+        to_update = []
 
-        db.delete_all("sync")
+        for player_id, description, expiration in main_vips.values():
+            if player_id not in target_vips:
+                to_add.append((player_id, description, expiration))
+            elif target_vips[player_id][1] != description or target_vips[player_id][2] != expiration:
+                to_update.append((player_id, description, expiration))  # Änderung in `description` oder `expiration`
+
+        for player_id in target_vips:
+            if player_id not in main_vips:
+                to_remove.append(target_vips[player_id])
+
+        # 🛠 Bevor neue Änderungen eingefügt werden, alte `player_id`-Einträge in `sync` löschen
+        for player_id, _, _ in to_add + to_remove + to_update:
+            db.execute_query("DELETE FROM sync WHERE player_id = ?", (player_id,))
+
+        # `sync`-Tabelle aktualisieren
         if to_add:
             db.bulk_insert("sync", to_add)
         if to_remove:
             for player_id, description, expiration in to_remove:
                 db.execute_query("INSERT INTO sync (player_id, description, expiration) VALUES (?, ?, ?)", (player_id, description, expiration))
+        if to_update:
+            for player_id, description, expiration in to_update:
+                db.execute_query("INSERT INTO sync (player_id, description, expiration) VALUES (?, ?, ?)", (player_id, description, expiration))
 
-        if to_add or to_remove:
-            log_to_file(f"🔄 Automatische VIP-Synchronisation: {len(to_add)} hinzugefügt, {len(to_remove)} entfernt.", level="INFO")
-            
-            # Falls ein Log-Channel existiert, sende eine Nachricht
-            if VIP_LOG_CHANNEL:
-                channel = bot.get_channel(VIP_LOG_CHANNEL)
-                if channel:
-                    embed = discord.Embed(
-                        title="🔄 Automatische VIP-Synchronisation",
-                        description="Folgende Änderungen wurden erkannt:",
-                        color=discord.Color.orange()
-                    )
+        log_to_file(f"{len(to_add)} VIPs zur `sync`-Tabelle hinzugefügt.", level="INFO")
+        log_to_file(f"{len(to_remove)} VIPs zur Entfernung in `sync` gespeichert.", level="INFO")
+        log_to_file(f"{len(to_update)} VIPs mit aktualisiertem Ablaufdatum oder Namen gespeichert.", level="INFO")
+
+        # **📢 Log-Channel Update**
+        if VIP_LOG_CHANNEL:
+            channel = bot.get_channel(VIP_LOG_CHANNEL)
+            if channel:
+                embed = discord.Embed(
+                    title="🔄 VIP-Synchronisation – Änderungen erkannt",
+                    description="Diese Änderungen wurden ermittelt. Nutze `!apply_sync`, um sie zu übernehmen.",
+                    color=discord.Color.orange()
+                )
+                if to_add:
                     embed.add_field(name="✅ Hinzugefügt", value="\n".join([f"🟢 `{player_id}` - {description}" for player_id, description, expiration in to_add]) or "Keine neuen VIPs.", inline=False)
+                if to_remove:
                     embed.add_field(name="❌ Entfernt", value="\n".join([f"🔴 `{player_id}` - {description}" for player_id, description, expiration in to_remove]) or "Keine VIPs entfernt.", inline=False)
-                    embed.set_footer(text="VIP-Bot | Erstellt von Fw.Schultz")
-                    await channel.send(embed=embed)
+                if to_update:
+                    embed.add_field(name="🔄 Aktualisiert", value="\n".join([f"📝 `{player_id}` - {description} → `{expiration}`" for player_id, description, expiration in to_update]) or "Keine Aktualisierungen.", inline=False)
+                embed.set_footer(text="VIP-Bot | Erstellt von Fw.Schultz")
+                await channel.send(embed=embed)
+            else:
+                log_to_file(f"❌ Fehler: VIP_LOG_CHANNEL ({VIP_LOG_CHANNEL}) konnte nicht gefunden werden.", level="ERROR")
 
-            return True
-        return False
+        return True
 
     except Exception as e:
-        log_to_file(f"❌ Fehler bei der automatischen VIP-Synchronisation: {str(e)}", level="ERROR")
+        log_to_file(f"Fehler bei der Synchronisation: {str(e)}", level="ERROR")
         return False
 
 async def apply_sync_task():
-    """Führt `apply_sync` automatisch aus, wenn Änderungen erkannt wurden."""
+    """Wendet die geplanten VIP-Änderungen an, indem sie an den Zielserver gesendet werden."""
     try:
         target_headers = {"Authorization": f"Bearer {os.getenv('TARGET_API_TOKEN')}"}
         add_vip_url = f"{os.getenv('TARGET_API_URL')}/api/add_vip"
@@ -256,52 +280,72 @@ async def apply_sync_task():
 
         sync_data = db.fetch_all("sync")
         if not sync_data:
+            log_to_file("ℹ️ Keine Änderungen in `sync` gespeichert. `!sync_vips` zuerst ausführen.", level="INFO")
             return
+
+        log_to_file(f"📋 Geplante Änderungen aus `sync`: {sync_data}", level="INFO")
 
         main_vips = {row[0]: row for row in db.fetch_all("vips")}
         target_vips = {row[0]: row for row in db.fetch_all("receiver_vips")}
 
-        to_add = [row for row in sync_data if row[0] in main_vips and row[0] not in target_vips]
-        to_remove = [row for row in sync_data if row[0] in target_vips and row[0] not in main_vips]
+        to_add = []
+        to_remove = []
+
+        for player_id, description, expiration in sync_data:
+            if player_id in main_vips:
+                main_desc, main_exp = main_vips[player_id][1], main_vips[player_id][2]
+                
+                if player_id in target_vips:
+                    target_desc, target_exp = target_vips[player_id][1], target_vips[player_id][2]
+                    
+                    # Falls sich die Beschreibung oder das Ablaufdatum geändert hat, entfernen und neu hinzufügen
+                    if main_desc != target_desc or main_exp != target_exp:
+                        to_remove.append(player_id)
+                        to_add.append((player_id, main_desc, main_exp))
+                else:
+                    to_add.append((player_id, main_desc, main_exp))
+            else:
+                to_remove.append(player_id)
+
+        log_to_file(f"🔄 VIPs zum Entfernen: {to_remove}", level="INFO")
+        log_to_file(f"✅ VIPs zum Hinzufügen: {to_add}", level="INFO")
 
         added_count = 0
         removed_count = 0
 
+        for player_id in to_remove:
+            async with aiohttp.ClientSession(headers=target_headers) as session:
+                async with session.post(remove_vip_url, json={"player_id": player_id}) as response:
+                    response_text = await response.text()
+                    if response.status == 200:
+                        removed_count += 1
+                        log_to_file(f"✅ Entfernt: {player_id}")
+                    else:
+                        log_to_file(f"❌ Fehler beim Entfernen von VIP {player_id}: {response.status} - {response_text}", level="ERROR")
+
         for player_id, description, expiration in to_add:
             async with aiohttp.ClientSession(headers=target_headers) as session:
                 async with session.post(add_vip_url, json={"player_id": player_id, "description": description, "expiration": expiration}) as response:
+                    response_text = await response.text()
                     if response.status == 200:
                         added_count += 1
-                        log_to_file(f"✅ Automatisch hinzugefügt: {player_id} - {description}")
+                        log_to_file(f"✅ Hinzugefügt: {player_id} - {description} - {expiration}")
                     else:
-                        error_text = await response.text()
-                        log_to_file(f"❌ Fehler beim Hinzufügen von {player_id}: {error_text}", level="ERROR")
-
-        for player_id, _, _ in to_remove:
-            async with aiohttp.ClientSession(headers=target_headers) as session:
-                async with session.post(remove_vip_url, json={"player_id": player_id}) as response:
-                    if response.status == 200:
-                        removed_count += 1
-                        log_to_file(f"✅ Automatisch entfernt: {player_id}")
-                    else:
-                        error_text = await response.text()
-                        log_to_file(f"❌ Fehler beim Entfernen von {player_id}: {error_text}", level="ERROR")
+                        log_to_file(f"❌ Fehler beim Hinzufügen von VIP {player_id}: {response.status} - {response_text}", level="ERROR")
 
         db.delete_all("sync")
 
-        if VIP_LOG_CHANNEL:
-            channel = bot.get_channel(VIP_LOG_CHANNEL)
-            if channel:
-                embed = discord.Embed(
-                    title="✅ Automatische VIP-Synchronisation abgeschlossen",
-                    description=f"`{added_count}` VIPs hinzugefügt, `{removed_count}` VIPs entfernt.",
-                    color=discord.Color.green()
-                )
-                embed.set_footer(text="VIP-Bot | Erstellt von Fw.Schultz")
-                await channel.send(embed=embed)
+        log_to_file(f"✅ Synchronisation abgeschlossen: {added_count} hinzugefügt, {removed_count} entfernt.", level="INFO")
 
     except Exception as e:
-        log_to_file(f"❌ Fehler beim automatischen Anwenden der Synchronisation: {str(e)}", level="ERROR")
+        log_to_file(f"❌ Fehler bei der Synchronisation: {str(e)}", level="ERROR")
+        embed = discord.Embed(
+            title="❌ Fehler bei der Synchronisation",
+            description=f"Ein Fehler ist aufgetreten: `{str(e)}`",
+            color=discord.Color.red()
+        )
+        embed.set_footer(text="VIP-Bot | Erstellt von Fw.Schultz")
+        await ctx.send(embed=embed)
 
 @bot.command()
 @check_allowed_roles()
@@ -693,6 +737,18 @@ async def vipbot(ctx):
 
     await ctx.send(embed=embed)
 
+@bot.event
+async def on_ready():
+    print(f"✅ Bot ist eingeloggt als {bot.user.name}")
+    
+    # Debugging für VIP_LOG_CHANNEL
+    if VIP_LOG_CHANNEL:
+        channel = bot.get_channel(VIP_LOG_CHANNEL)
+        if channel:
+            print(f"✅ VIP_LOG_CHANNEL gefunden: {channel.name} (ID: {VIP_LOG_CHANNEL})")
+            await channel.send("🔔 **VIP-Bot ist gestartet und sendet in diesen Kanal!**")
+        else:
+            print(f"❌ VIP_LOG_CHANNEL {VIP_LOG_CHANNEL} nicht gefunden! Überprüfe die Channel-ID.")
 
 # Bot starten
 bot.run(DISCORD_BOT_TOKEN)
