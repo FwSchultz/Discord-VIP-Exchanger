@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="assets/logo.png" alt="logo" width="200" height="auto" />
+  <img src="https://github.com/FwSchultz/assets/blob/main/bots/FwS-Bots/Discord-VIP-Exchanger/logo.png" alt="logo" width="200" height="auto" />
   <h1>VIP-Exchanger-Bot</h1>
   
 <!-- Badges -->
